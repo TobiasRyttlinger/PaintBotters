@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PaintBot", "Paintbot\PaintBot.csproj", "{1966083E-3EB0-49E6-A102-AEE5F301D338}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Paintbot.Tests", "Paintbot.Tests\Paintbot.Tests.csproj", "{9EA48F10-214A-4153-A3F8-84F18D31D0BB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1966083E-3EB0-49E6-A102-AEE5F301D338}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1966083E-3EB0-49E6-A102-AEE5F301D338}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1966083E-3EB0-49E6-A102-AEE5F301D338}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1966083E-3EB0-49E6-A102-AEE5F301D338}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9EA48F10-214A-4153-A3F8-84F18D31D0BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9EA48F10-214A-4153-A3F8-84F18D31D0BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9EA48F10-214A-4153-A3F8-84F18D31D0BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9EA48F10-214A-4153-A3F8-84F18D31D0BB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {15DE5AE2-D71B-4BBB-B732-3B8E36C0D638}
+	EndGlobalSection
+EndGlobal
