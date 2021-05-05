@@ -2,7 +2,7 @@
   "profiles": {
     "PaintBot": {
       "commandName": "Project",
-      "commandLineArgs": "Bottersh training 40"
+      "commandLineArgs": "Undercoversnakebot tournament"
     }
   }
 }

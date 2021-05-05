@@ -9,6 +9,8 @@
     using Messaging.Request.HeartBeat;
     using Messaging.Response;
     using Serilog;
+    using System.Diagnostics;
+    using System.Threading;
     using Action = Game.Action.Action;
 
     public abstract class PaintBot
@@ -98,8 +100,17 @@
 
         private async Task OnMapUpdated(MapUpdated mapUpdated, CancellationToken ct)
         {
+            Stopwatch stopwatch = new Stopwatch();
+
+            
+          
+         
             _logger.Information($"{mapUpdated}");
+            stopwatch.Start();
             var action = GetAction(mapUpdated);
+            Console.WriteLine(action);
+            stopwatch.Stop();
+            Console.WriteLine("Elapsed Time is {0} ms", stopwatch.Elapsed);
             await _paintBotClient.SendAsync(
                 new RegisterMove(mapUpdated.ReceivingPlayerId)
                 {

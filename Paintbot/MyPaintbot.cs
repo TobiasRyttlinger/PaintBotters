@@ -17,11 +17,15 @@
         private IMapUtils _mapUtils;
 
         public int counter;
+        public Action LastAction;
+        public Action LastLastAction;
         public MyPaintBot(PaintBotConfig paintBotConfig, IPaintBotClient paintBotClient, IHearBeatSender hearBeatSender, ILogger logger) :
             base(paintBotConfig, paintBotClient, hearBeatSender, logger)
         {
             GameMode = paintBotConfig.GameMode;
             Name = paintBotConfig.Name ?? "Båtersh";
+            LastAction = Action.Stay;
+            LastLastAction = Action.Down;
             counter = 0;
         }
 
@@ -84,12 +88,37 @@
             return closestPlayerWithPowerUp;
         }
 
+        public MapCoordinate GetClosestPit(MapCoordinate myCoord, MapCoordinate[] pits)
+        {
+         
+  
+
+            var ClosestPit = new MapCoordinate(999, 999);
+            var distanceToClosestPit = 9999;
+
+            if (pits.Length != 0)
+            {
+                var prevDistancePow = 9999;
+                foreach (var pit in pits)
+                {
+                    distanceToClosestPit = myCoord.GetManhattanDistanceTo(pit);
+
+                    if (distanceToClosestPit < prevDistancePow)
+                    {
+                        prevDistancePow = distanceToClosestPit;
+                        ClosestPit = pit;
+                    }
+                }
+            }
+            return ClosestPit;
+
+        }
 
 
         public MapCoordinate GetClosestPlayerWithoutPowerUp(MapCoordinate myCoord, CharacterInfo self, CharacterInfo[] playerInfos)
         {
 
-            var distanceToClosestPlayerWithPowerUp = 999;
+            var distanceToClosestPlayerWithoutPowerUp = 0;
             var prevDistancePlayerPow = 999;
             var closestPlayerWithPowerUp = new MapCoordinate(999, 999);
             foreach (var info in playerInfos)
@@ -99,18 +128,15 @@
                     continue;
                 }
 
+                distanceToClosestPlayerWithoutPowerUp = myCoord.GetManhattanDistanceTo(_mapUtils.GetCoordinateFrom(info.Position));
 
-                if (info.CarryingPowerUp)
+                if (distanceToClosestPlayerWithoutPowerUp < prevDistancePlayerPow)
                 {
-                    distanceToClosestPlayerWithPowerUp = myCoord.GetManhattanDistanceTo(_mapUtils.GetCoordinateFrom(info.Position));
-
-                    if (distanceToClosestPlayerWithPowerUp < prevDistancePlayerPow)
-                    {
-                        prevDistancePlayerPow = distanceToClosestPlayerWithPowerUp;
-                        closestPlayerWithPowerUp = _mapUtils.GetCoordinateFrom(info.Position);
-                    }
-
+                    prevDistancePlayerPow = distanceToClosestPlayerWithoutPowerUp;
+                    closestPlayerWithPowerUp = _mapUtils.GetCoordinateFrom(info.Position);
                 }
+
+
 
             }
             return closestPlayerWithPowerUp;
@@ -139,12 +165,12 @@
             var myCharacter = _mapUtils.GetCharacterInfoFor(mapUpdated.ReceivingPlayerId);
             var myCoordinate = _mapUtils.GetCoordinateFrom(myCharacter.Position);
             var myColouredTiles = _mapUtils.GetCoordinatesFrom(myCharacter.ColouredPositions);
-
             var Pits = _mapUtils.GetObstacleCoordinates();
-
+            
             var powerUpCoordinates = _mapUtils.GetPowerUpCoordinates();
             var prevDistancePow = 999999;
             var distanceToClosestPowerUp = 999;
+
             var validActionsThatPaintsNotOwnedTile = directions.Where(dir =>
                             !myColouredTiles.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
 
@@ -152,31 +178,52 @@
             var distanceToClosestPlayerWithPowerUp = 999;
             var closestPlayerWithoutPowerUp = new MapCoordinate(999, 999);
             var closestPlayerWithPowerUp = GetClosestPlayerWithPowerUp(myCoordinate, myCharacter, playerInfos);
-
+            var distanceToclosestPlayerWithoutPowerUp = myCoordinate.GetManhattanDistanceTo(closestPlayerWithoutPowerUp);
             distanceToClosestPlayerWithPowerUp = myCoordinate.GetManhattanDistanceTo(closestPlayerWithPowerUp);
 
             var closestPowerUp = new MapCoordinate(999, 999);
 
-            if (distanceToClosestPlayerWithPowerUp < 5)
-            {
 
+
+
+            if (distanceToClosestPlayerWithPowerUp < 6 || distanceToclosestPlayerWithoutPowerUp < 2)
+            {
+                // Debug.WriteLine("Danger:" + distanceToClosestPlayerWithPowerUp);
                 var BestAction = Action.Up;
-                var previousActionDistance = 9999;
-                validActionsThatPaintsNotOwnedTile = directions.Where(dir => 
+                var previousActionDistance = distanceToClosestPlayerWithPowerUp;
+
+                validActionsThatPaintsNotOwnedTile = directions.Where(dir =>
                 !Pits.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
 
                 foreach (var Action in validActionsThatPaintsNotOwnedTile)
                 {
                     var TestCord = myCoordinate.MoveIn(Action);
+                    var ActionDistance = TestCord.GetManhattanDistanceTo(closestPlayerWithPowerUp);
                     if (_mapUtils.GetTileAt(TestCord) == Tile.Obstacle || _mapUtils.GetTileAt(TestCord) == Tile.Character)
                     {
+                        if (Action == Action.Up)
+                        {
+                            return BestAction = Action.Down;
+                        }
+                        if (Action == Action.Down)
+                        {
+                            return BestAction = Action.Up;
+                        }
+                        if (Action == Action.Left)
+                        {
+                            return BestAction = Action.Right;
+                        }
+                        if (Action == Action.Right)
+                        {
+                            return BestAction = Action.Left;
+                        }
                         continue;
                     }
 
-                    if (TestCord.GetManhattanDistanceTo(closestPlayerWithPowerUp) > 5)
+                    if (ActionDistance > 5)
                     {
 
-                        if (TestCord.GetManhattanDistanceTo(closestPlayerWithPowerUp) > previousActionDistance)
+                        if (ActionDistance > previousActionDistance)
                         {
 
                             previousActionDistance = TestCord.GetManhattanDistanceTo(closestPlayerWithPowerUp);
@@ -186,7 +233,7 @@
                     }
 
                 }
-
+                // Debug.WriteLine("Safe:" + distanceToClosestPlayerWithPowerUp);
                 return BestAction;
 
 
@@ -197,19 +244,18 @@
             {
                 var closestPlayer = GetClosestPlayerWithoutPowerUp(myCoordinate, myCharacter, playerInfos);
                 var distanceToClosestPlayerNoPowerUp = myCoordinate.GetManhattanDistanceTo(closestPlayer);
-                
+
                 closestPowerUp = getClosestPowerUp(myCoordinate);
                 distanceToClosestPowerUp = myCoordinate.GetManhattanDistanceTo(closestPowerUp);
 
-                return Action.Explode;
 
-                if (distanceToClosestPowerUp < 5 || distanceToClosestPlayerNoPowerUp < 5 )
+                if (distanceToClosestPowerUp < 5 || distanceToClosestPlayerNoPowerUp < 5)
                 {
                     return Action.Explode;
                 }
                 else
                 {
-                  
+
                     var BestActionPlayer = Action.Down;
 
 
@@ -261,59 +307,121 @@
                 closestPowerUp = getClosestPowerUp(myCoordinate);
                 distanceToClosestPowerUp = myCoordinate.GetManhattanDistanceTo(closestPowerUp);
 
-                if (powerUpCoordinates.Length > 0)
+                if (powerUpCoordinates.Length > 0 || distanceToClosestPowerUp < 30)
                 {
-                    //Move to closest power up
+                    var ClosestPit = GetClosestPit(myCoordinate, Pits);
+                    var distanceToClosestPit = myCoordinate.GetManhattanDistanceTo(ClosestPit);
                     validActionsThatPaintsNotOwnedTile = directions.Where(dir =>
-               !Pits.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
+                  !Pits.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
 
-                    var BestAction = Action.Left;
+                    if (distanceToClosestPit < 1 )
+                    {
+                        validActionsThatPaintsNotOwnedTile = directions.Where(dir =>
+                      !Pits.Contains(myCoordinate.MoveIn(dir)) && !myColouredTiles.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
+                    }
+                   
+
+                    var BestAction = Action.Right;
                     var previousActionDistance = 9999;
                     foreach (var Action in validActionsThatPaintsNotOwnedTile)
                     {
                         var TestCord = myCoordinate.MoveIn(Action);
-                        if (_mapUtils.GetTileAt(TestCord) == Tile.Obstacle || _mapUtils.GetTileAt(TestCord) == Tile.Character)
-                        {
-                            continue;
-                        }
+
 
                         var TestDistance = TestCord.GetManhattanDistanceTo(closestPowerUp);
-                        if (TestDistance < distanceToClosestPowerUp)
+
+                        if (TestDistance < previousActionDistance)
                         {
-                            if (TestDistance < previousActionDistance)
-                            {
 
-                                previousActionDistance = TestDistance;
-                                Debug.WriteLine(previousActionDistance);
-                                BestAction = Action;
-                            }
+                            previousActionDistance = TestDistance;
+                            Debug.WriteLine(previousActionDistance);
+                            BestAction = Action;
+                        }
 
+
+                        
+
+                    }
+                    if (distanceToclosestPlayerWithoutPowerUp <= 2 && distanceToClosestPowerUp < 2)
+                    {
+                        if (BestAction == Action.Up)
+                        {
+                            return Action.Down;
+                        }
+                        if (BestAction == Action.Down)
+                        {
+                            return Action.Up;
+                        }
+                        if (BestAction == Action.Left)
+                        {
+                            return Action.Right;
+                        }
+                        if (BestAction == Action.Right)
+                        {
+                            return Action.Left;
                         }
 
                     }
-
+                    if (_mapUtils.GetTileAt(myCoordinate.MoveIn(BestAction)) == Tile.Obstacle/* || _mapUtils.GetTileAt(TestCord) == Tile.Character*/)
+                    {
+                        if (BestAction == Action.Up)
+                        {
+                            return Action.Right;
+                        }
+                        if (BestAction == Action.Down)
+                        {
+                            return Action.Left;
+                        }
+                        if (BestAction == Action.Left)
+                        {
+                            return Action.Up;
+                        }
+                        if (BestAction == Action.Right)
+                        {
+                            return Action.Down;
+                        }
+                        
+                    }
 
                     return BestAction;
                 }
                 else
                 {
+
                     validActionsThatPaintsNotOwnedTile = directions.Where(dir =>
-            !Pits.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
-                    var actionen = Action.Down;
+             !myColouredTiles.Contains(myCoordinate.MoveIn(dir)) && !Pits.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
+
+
+                    var BestAction = Action.Left;
                     var distanceToCenter = 9999;
                     foreach (var Action in validActionsThatPaintsNotOwnedTile)
                     {
                         var TestCord = myCoordinate.MoveIn(Action);
 
-                        if (_mapUtils.GetTileAt(TestCord) == Tile.Obstacle || _mapUtils.GetTileAt(TestCord) == Tile.Character)
-                        {
-                            continue;
-                        }
+                        //if (_mapUtils.GetTileAt(TestCord) == Tile.Obstacle || _mapUtils.GetTileAt(TestCord) == Tile.Character)
+                        //{
+                        //    if (Action == Action.Up)
+                        //    {
+                        //        return BestAction = Action.Down;
+                        //    }
+                        //    if (Action == Action.Down)
+                        //    {
+                        //        return BestAction = Action.Up;
+                        //    }
+                        //    if (Action == Action.Left)
+                        //    {
+                        //        return BestAction = Action.Right;
+                        //    }
+                        //    if (Action == Action.Right)
+                        //    {
+                        //        return BestAction = Action.Left;
+                        //    }
+                        //    continue;
+                        //}
                         var TestDistance = TestCord.GetManhattanDistanceTo(new MapCoordinate(mapUpdated.Map.Width / 2, mapUpdated.Map.Height / 2));
-                        if (TestDistance < 3)
+                        if (TestDistance <= 3)
                         {
-                            validActionsThatPaintsNotOwnedTile = directions.Where(dir =>
-               !Pits.Contains(myCoordinate.MoveIn(dir)) && !myColouredTiles.Contains(myCoordinate.MoveIn(dir)) && _mapUtils.IsMovementPossibleTo(myCoordinate.MoveIn(dir))).ToList();
+
                             if (validActionsThatPaintsNotOwnedTile.Any())
                             {
                                 return validActionsThatPaintsNotOwnedTile.First();
@@ -325,8 +433,8 @@
                             {
 
                                 distanceToCenter = TestDistance;
-                                Debug.WriteLine(distanceToCenter);
-                                actionen = Action;
+
+                                BestAction = Action;
                             }
 
                         }
@@ -334,7 +442,7 @@
 
 
                     }
-                    return actionen;
+                    return BestAction;
 
                 }
             }
